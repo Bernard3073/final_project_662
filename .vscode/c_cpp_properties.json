@@ -1,0 +1,19 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "",
+        "limitSymbolsToIncludedHeaders": true
+      },
+      "includePath": [
+        "/home/bernard/809E_ws/devel/include/**",
+        "/home/bernard/catkin_ws/devel/include/**",
+        "/opt/ros/melodic/include/**",
+        "/home/bernard/809E_ws/src/gazebo_ros_link_attacher/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS"
+    }
+  ],
+  "version": 4
+}
