@@ -2,9 +2,9 @@
 <launch>
   <!-- <include file="$(find gazebo_ros)/launch/empty_world.launch" /> -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
-		<arg name="world_name" value="$(find final_project_662)/world/custom_world.world"/>
+		<arg name="world_name" value="$(find final_project_662)/world/custom_world_2.world"/>
 		<arg name="paused" value="false"/>
-		<arg name="use_sim_time" value="true"/>
+		<arg name="use_sim_time" value="false"/>
 		<arg name="gui" value="true"/>
 		<arg name="headless" value="false"/>
 		<arg name="debug" value="false"/>
@@ -23,7 +23,7 @@
     args="-urdf -param robot_description -model mobile_manipulator -x $(arg x) -y $(arg y) -z $(arg z)" />
 
   <node name="spawn_box" pkg="gazebo_ros" type="spawn_model"
-    args="-urdf -param box -model box -x 0.6 -y 0.325 -z 0.2" />
+    args="-urdf -param box -model red_box -x 0.62 -y 0.32 -z 0.2" />
   
   <rosparam command="load" file="$(find final_project_662)/config/arm_control.yaml" />
   

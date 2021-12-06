@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 
-# Author: Automatic Addison https://automaticaddison.com
-# Description: Uses the ROS action lib to move a robotic arm to a goal location
- 
-# Import the necessary libraries
 from __future__ import print_function
 from rosgraph.names import namespace # Printing
 import rospy # Python client library
@@ -17,6 +13,10 @@ from sensor_msgs.msg import JointState
 import numpy as np
 from std_srvs.srv import Empty
 
+from geometry_msgs.msg import Twist, Point
+from std_msgs.msg import String
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+
 d1 = 0.145
 d2 = 0
 d3 = 0.27
@@ -25,6 +25,16 @@ d5 = 0.34
 a1 = 0.2
 a2 = -0.05
 a3 = -0.05
+
+# Initialize your ROS node
+rospy.init_node("move_robot")
+# parent frame for the listener
+parent_frame = '/robot_base_velocity_controller/odom'
+# child frame for the listener
+child_frame = 'base_footprint'
+pub = rospy.Publisher("/robot_base_velocity_controller/cmd_vel", Twist, queue_size=5)
+velocity_msg = Twist()
+rate = rospy.Rate(4)
 
 def create_trans_matrix(a, alpha, d, theta):
     alpha = np.deg2rad(alpha)
@@ -98,14 +108,6 @@ def move_robot_arm(joint_values):
   # Send a goal to the ActionServer and wait for the server to finish performing the action
   arm_client.send_goal_and_wait(arm_goal, exec_timeout, prmpt_timeout)
 
-def joint_states_callback(msg):
-  print("joint states:", msg.position)
-
-def get_joint_states():
-  # rospy.init_node('listener', anonymous=True)
-  rospy.Subscriber("/joint_states", JointState, joint_states_callback)
-  rospy.spin()
-
 def gripper_on():
     # Wait till the srv is available
     rospy.wait_for_service('/vacuum_gripper/on')
@@ -130,11 +132,46 @@ def gripper_off():
     except(rospy.ServiceException, e):
         print("Service call failed: %s" % e)
 
+def go_straight(dist, vel):
+    distance_to_drive, linear_velocity = dist, vel
+    # update linear.x from the command line
+    velocity_msg.linear.x = linear_velocity
+    # get the current time (s)
+    t_0 = rospy.Time.now().to_sec()
+    # keep track of the distance
+    distance_moved = 0.0
+    rate = rospy.Rate(3)
+    # while the amount of distance has not been reached
+    while distance_moved <= distance_to_drive:
+        pub.publish(velocity_msg)
+        rate.sleep()
+        # time in sec in the loop
+        t_1 = rospy.Time.now().to_sec()
+        distance_moved = (t_1 - t_0) * abs(linear_velocity)
+
+    rospy.loginfo("Distance reached")
+    velocity_msg.linear.x = 0.0
+    pub.publish(velocity_msg)
+
+
+def rotate(angle, vel):
+    relative_angle_degree, angular_velocity = angle, vel
+    velocity_msg.angular.z = angular_velocity
+    
+    t0 = rospy.Time.now().to_sec()
+    while True:
+        pub.publish(velocity_msg)
+        rate.sleep()
+        t1 = rospy.Time.now().to_sec()
+        current_angle_degree = (t1 - t0) * angular_velocity
+        if abs(current_angle_degree) >= np.deg2rad(abs(relative_angle_degree)):
+            rospy.loginfo("angle is reached")
+            break
+    
+    velocity_msg.angular.z = 0
+    pub.publish(velocity_msg)
+
 def main():
-  # Initialize a rospy node so that the SimpleActionClient can
-  # publish and subscribe over ROS.
-  rospy.init_node('send_goal_to_arm_py')
-  # get_joint_states()
   q_0 = np.array([0, 0, 0, 0, 0], dtype='float64')
   t_0 = 0
   delta_t = 0.1
@@ -147,12 +184,6 @@ def main():
     theta_5 = q_0[4]
 
     # Transformation Matrix
-    # T_mat_01 = create_trans_matrix(a1, 0, d1, theta_1)
-    # T_mat_12 = create_trans_matrix(a2, -90, d2, theta_2) 
-    # T_mat_23 = create_trans_matrix(a3, 0, d3, theta_3) 
-    # T_mat_34 = create_trans_matrix(0, 90, d4, theta_4) 
-    # T_mat_45 = create_trans_matrix(0, -90, d5, theta_5) 
-
     T_mat_01 = create_trans_matrix(a1, 0, d1, theta_1)
     T_mat_12 = create_trans_matrix(a2, -90, d2, theta_2 + np.pi/2) 
     T_mat_23 = create_trans_matrix(a3, 0, d3, theta_3) 
@@ -183,15 +214,22 @@ def main():
     q_0 += np.around(np.clip(q_dot, -1*0.2, 0.2), decimals=4)
     move_robot_arm(q_0)
     t_0 += delta_t
-  print("Robotic arm has successfully reached the goal!")
+
+  # Start Grasping Object
   gripper_on()
   move_robot_arm(np.array([q_0[0], q_0[1]+np.deg2rad(20), q_0[2], np.deg2rad(180), q_0[4]+np.deg2rad(-37.5)]))
-  print("Start Grasping !!!")
-  print("Finish Grasping !!!")
-  collect_object_angle = np.array([q_0[0], q_0[1] + np.deg2rad(-10),  q_0[2], np.deg2rad(180), q_0[4]+np.deg2rad(-37.5)])
+  collect_object_angle = np.array([q_0[0], q_0[1] + np.deg2rad(-2.5),  q_0[2], np.deg2rad(180), q_0[4]+np.deg2rad(-37.5)])
   move_robot_arm(collect_object_angle)
+  # Move to target position to place object
+  rotate(220, 0.5)
+  go_straight(0.55, 0.1)
+  collect_object_angle = np.array([q_0[0]+np.deg2rad(-30), q_0[1] + np.deg2rad(15),  q_0[2], np.deg2rad(180), q_0[4]+np.deg2rad(-37.5)])
+  move_robot_arm(collect_object_angle)
+  gripper_off()
+  collect_object_angle = np.array([q_0[0]+np.deg2rad(-30), q_0[1],  q_0[2], np.deg2rad(180), q_0[4]+np.deg2rad(-37.5)])
+  go_straight(0.25, -0.1)
+
 if __name__ == '__main__':
-  
   try:
     main() 
      
