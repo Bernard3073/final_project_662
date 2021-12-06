@@ -2,6 +2,10 @@ robot_base_joint_publisher:
   type: "joint_state_controller/JointStateController"
   publish_rate: 50
 
+robot_vacuum_gripper:
+  type: "gazebo_ros_vacuum_gripper"
+  publish_rate: 50
+
 robot_base_velocity_controller:
   type: "diff_drive_controller/DiffDriveController"
   left_wheel: ['front_left_wheel_joint', 'rear_left_wheel_joint']

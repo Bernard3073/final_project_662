@@ -418,6 +418,7 @@
     </collision>
   </link>
 
+
 <joint name="arm_base_joint" type="continuous">
   <axis xyz="0 0 1"/>
   <parent link="base_link"/>
@@ -445,24 +446,72 @@
   <child link="elbow"/>
   <origin rpy="0 0 0" xyz="0.0 0 0.13522"/>
 </joint>
-<!-- make the top-writst joint become revolute to allow the vacuum gripper to operate -->
-<joint name="top_wrist_joint" type="continous">
+
+<joint name="top_wrist_joint" type="continuous">
   <axis xyz="0 1 0"/>
   <parent link="elbow"/>
   <child link="top_wrist"/>
   <origin rpy="0 0 0" xyz="0.0 0 0.20994"/>
 </joint>
 
-<!-- <gazebo>
-  <plugin name="gazebo_ros_vacuum_gripper" filename="libgazebo_ros_vacuum_gripper.so">
-    <robotNamespace>/mobile_manipulator/vacuum_gripper</robotNamespace>
-    <bodyName>top_wrist_joint</bodyName>
-    <topicName>grasping</topicName>
-    <maxForce>50</maxForce>
-    <maxDistance>0.05</maxDistance>
-    <minDistance>0.01</minDistance>
-  </plugin>
-</gazebo> -->
+<!-- Add dummy link and joint -->
+  <!-- <link name="dummy_link">
+  </link>
+  <joint name="dummy_joint" type="fixed">
+    <parent link="dummy_link"/>
+    <child link="base_link"/>
+  </joint> -->
+
+<!-- <joint name="ee_fixed_joint" type="fixed">
+  <parent link="top_wrist" />
+  <child link = "ee_link" />
+  <origin xyz="0.0 0 0.0" rpy="0.0 0.0 0.20994" />
+</joint>
+
+<link name="ee_link">
+  <collision>
+    <geometry>
+      <box size="0.01 0.01 0.01"/>
+    </geometry>
+    <surface>
+      <friction>
+        <ode>
+          <mu>10</mu>
+          <mu2>10</mu2>
+        </ode>
+      </friction>
+    </surface>
+    <origin rpy="0 0 0" xyz="-0.01 0 0"/>
+  </collision>
+</link> -->
+
+<link name="vacuum_gripper">
+  <gravity>0</gravity>
+  <visual>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <geometry>
+      <!-- <cylinder radius="0.005" length="0.01"/> -->
+      <box size="0.05 0.1 0.021"/>
+    </geometry>
+    <material name="transparent">
+      <color rgba="0 0 0 0"/>
+    </material>
+  </visual>
+  <inertial>
+    <origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+    <mass value="0.0001"/>
+    <inertia ixx="1e-08" ixy="0" ixz="0" iyy="1e-08" iyz="0" izz="1e-08"/>
+  </inertial>
+</link>
+<!-- revolute to allow the vacuum gripper to operate -->
+<joint name="gripper_joint" type="revolute">
+  <axis xyz="0 1 0" />
+  <parent link="top_wrist" />
+  <child link="vacuum_gripper" />
+  <origin rpy="0 0 0" xyz="0.0 0 0.13"/>
+  <limit effort="50" velocity="10" lower="0" upper="0" />
+  <dynamics damping="0.0" friction="10"/>
+</joint>
 
 
 <!--########################## BASE TRANSMISSIONS ############################################-->
@@ -580,6 +629,17 @@
     </plugin>
   </gazebo>
 <!--######################################################################-->
+<gazebo>
+  <plugin name="gazebo_ros_vacuum_gripper" filename="libgazebo_ros_vacuum_gripper.so">
+    <!-- publish vacuum gripper topic name -->
+    <robotNamespace>/vacuum_gripper</robotNamespace> 
+    <bodyName>vacuum_gripper</bodyName>
+    <topicName>grasping</topicName>
+    <maxForce>50</maxForce>
+    <maxDistance>0.05</maxDistance>
+    <minDistance>0.01</minDistance>
+  </plugin>
+</gazebo>
 
 <!--######################################################################-->
 <gazebo>
